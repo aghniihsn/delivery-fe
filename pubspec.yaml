@@ -30,9 +30,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.1 #versi dapat bervariasi, gunakan versi terbaru
-  image_picker: ^1.1.2 #versi dapat bervariasi, gunakan versi terbaru
-  mobile_scanner: ^5.1.1 #versi dapat bervariasi, gunakan versi terbaru
+  http: ^1.2.1
+  http_parser: ^4.0.2
+  shared_preferences: ^2.2.2
+  image_picker: ^1.1.2
+  mobile_scanner: ^5.1.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

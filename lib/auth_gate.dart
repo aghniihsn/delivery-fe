@@ -1,5 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:praktikum_1/auth_service.dart';
 import 'package:praktikum_1/dashboard_page.dart';
 import 'package:praktikum_1/login_page.dart';
 
@@ -8,8 +8,8 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    return FutureBuilder<bool>(
+      future: AuthService().isLoggedIn(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -17,7 +17,7 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        if (snapshot.hasData) {
+        if (snapshot.hasData && snapshot.data == true) {
           return const DashboardPage();
         }
 

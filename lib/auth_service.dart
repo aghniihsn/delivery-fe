@@ -1,37 +1,111 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final String baseUrl = 'http://192.168.45.106:5000/api/auth';
 
-  Future<User?> registerWithEmailPassword(String email, String password) async {
+  /// Login dan simpan token + data user ke SharedPreferences
+  Future<Map<String, dynamic>?> login(String email, String password) async {
     try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
       );
-      return result.user;
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['token']);
+        await prefs.setString('role', data['role']);
+        await prefs.setString('userName', data['name']);
+        await prefs.setString('userId', data['_id']);
+
+        return data;
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {'error': errorData['message'] ?? 'Login gagal'};
+      }
     } catch (e) {
-      print(e.toString());
+      print('Login Error: $e');
       return null;
     }
   }
 
-  Future<User?> signInWithEmailPassword(String email, String password) async {
+  /// Register user baru
+  Future<Map<String, dynamic>?> register(
+    String name,
+    String email,
+    String password, {
+    String role = 'driver',
+  }) async {
     try {
-      UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'role': role,
+        }),
       );
-      return result.user;
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['token']);
+        await prefs.setString('role', data['role']);
+        await prefs.setString('userName', data['name']);
+        await prefs.setString('userId', data['_id']);
+
+        return data;
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {'error': errorData['message'] ?? 'Registrasi gagal'};
+      }
     } catch (e) {
-      print(e.toString());
+      print('Register Error: $e');
       return null;
     }
   }
 
+  /// Cek apakah user sudah login (ada token tersimpan)
+  Future<bool> isLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    return token != null && token.isNotEmpty;
+  }
+
+  /// Ambil token yang tersimpan
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  /// Ambil role user yang tersimpan
+  Future<String?> getRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('role');
+  }
+
+  /// Ambil nama user yang tersimpan
+  Future<String?> getUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userName');
+  }
+
+  /// Logout - hapus semua data sesi
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+  }
+
+  /// Alias untuk logout
   Future<void> signOut() async {
-    await _auth.signOut();
+    await logout();
   }
-
-  Stream<User?> get user => _auth.authStateChanges();
 }
