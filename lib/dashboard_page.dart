@@ -3,6 +3,7 @@ import 'package:praktikum_1/api_services.dart';
 import 'package:praktikum_1/delivery_task_model.dart';
 import 'package:praktikum_1/auth_service.dart';
 import 'package:praktikum_1/delivery_detail_page.dart';
+import 'package:praktikum_1/edit_profile_page.dart';
 import 'package:praktikum_1/qr_scanner_page.dart';
 import 'package:praktikum_1/login_page.dart';
 
@@ -124,6 +125,18 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'Edit Profil',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfilePage(),
+                ),
+              ).then((_) => _loadUserName());
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scan QR',

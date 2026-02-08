@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  final String baseUrl = 'http://192.168.45.106:5000/api/auth';
+  final String baseUrl = 'http://192.168.66.106:5000/api/auth';
 
   /// Login dan simpan token + data user ke SharedPreferences
   Future<Map<String, dynamic>?> login(String email, String password) async {
@@ -22,6 +22,10 @@ class AuthService {
         await prefs.setString('role', data['role']);
         await prefs.setString('userName', data['name']);
         await prefs.setString('userId', data['_id']);
+        await prefs.setBool(
+          'profileCompleted',
+          data['profileCompleted'] ?? false,
+        );
 
         return data;
       } else {
@@ -61,6 +65,10 @@ class AuthService {
         await prefs.setString('role', data['role']);
         await prefs.setString('userName', data['name']);
         await prefs.setString('userId', data['_id']);
+        await prefs.setBool(
+          'profileCompleted',
+          data['profileCompleted'] ?? false,
+        );
 
         return data;
       } else {
@@ -107,5 +115,23 @@ class AuthService {
   /// Alias untuk logout
   Future<void> signOut() async {
     await logout();
+  }
+
+  /// Cek apakah profil sudah lengkap
+  Future<bool> isProfileCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('profileCompleted') ?? false;
+  }
+
+  /// Tandai profil sudah lengkap
+  Future<void> setProfileCompleted(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('profileCompleted', value);
+  }
+
+  /// Update nama user yang tersimpan
+  Future<void> setUserName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userName', name);
   }
 }

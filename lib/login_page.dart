@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:praktikum_1/admin_dashboard_page.dart';
 import 'package:praktikum_1/dashboard_page.dart';
+import 'package:praktikum_1/edit_profile_page.dart';
 import 'auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -268,11 +270,23 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     final String name = result['name'] ?? 'User';
+    final String role = result['role'] ?? 'driver';
+    final bool profileCompleted = result['profileCompleted'] ?? false;
     _showMsg('Selamat datang, $name!');
+
+    Widget destination;
+    if (role == 'admin') {
+      destination = const AdminDashboardPage();
+    } else if (!profileCompleted) {
+      // Driver belum lengkapi profil → wajib edit profil dulu
+      destination = const EditProfilePage(isFirstTime: true);
+    } else {
+      destination = const DashboardPage();
+    }
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const DashboardPage()),
+      MaterialPageRoute(builder: (context) => destination),
     );
   }
 }
