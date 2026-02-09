@@ -45,6 +45,7 @@ class _DashboardPageState extends State<DashboardPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -58,10 +59,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     if (scannedCode != null && mounted) {
       try {
-        // Ambil list tugas terbaru dari server/state
         final List<DeliveryTask> tasks = await _apiService.fetchDeliveryTasks();
-        
-        // Cari tugas yang cocok dengan ID hasil scan
         final matchedTask = tasks.firstWhere(
           (t) => t.taskId == scannedCode,
           orElse: () => throw Exception('Paket tidak ditemukan'),
@@ -69,14 +67,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
         if (!mounted) return;
 
-        // Jika ditemukan, langsung buka halaman detail untuk aksi selanjutnya (Update Status/POD)
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => DeliveryDetailPage(task: matchedTask)),
+          MaterialPageRoute(
+            builder: (context) => DeliveryDetailPage(task: matchedTask),
+          ),
         ).then((_) => _refreshTasks());
-
       } catch (e) {
-        _showMsg('Gagal: ID "$scannedCode" tidak ditemukan di daftar tugas Anda.', isError: true);
+        _showMsg('Gagal: ID "$scannedCode" tidak ditemukan.', isError: true);
       }
     }
   }
@@ -124,7 +122,6 @@ class _DashboardPageState extends State<DashboardPage> {
         return Colors.amber.shade700;
       case 'failed':
         return Colors.red;
-      case 'pending':
       default:
         return Colors.grey;
     }
@@ -142,7 +139,6 @@ class _DashboardPageState extends State<DashboardPage> {
         return Icons.schedule;
       case 'failed':
         return Icons.cancel;
-      case 'pending':
       default:
         return Icons.radio_button_unchecked;
     }
@@ -150,193 +146,292 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Dashboard Pengiriman', style: TextStyle(fontSize: 18)),
-            Text(
-              'Halo, $_userName',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w300),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        appBar: AppBar(
+          elevation: 0,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'LogiTrack Driver',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Halo, $_userName',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              onPressed: _navigateToQRScanner,
+            ),
+            IconButton(
+              icon: const Icon(Icons.person_outline),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EditProfilePage(),
+                  ),
+                ).then((_) => _loadUserName());
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: _handleLogout,
             ),
           ],
+          bottom: const TabBar(
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            tabs: [
+              Tab(text: 'Tugas Aktif'),
+              Tab(text: 'Selesai'),
+            ],
+          ),
         ),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: 'Edit Profil',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EditProfilePage(),
-                ),
-              ).then((_) => _loadUserName());
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: 'Scan QR',
-            onPressed: _navigateToQRScanner,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _refreshTasks,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: _handleLogout,
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => _refreshTasks(),
-        child: FutureBuilder<List<DeliveryTask>>(
+        body: FutureBuilder<List<DeliveryTask>>(
           future: _tasksFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              final errorMsg = snapshot.error.toString().replaceAll(
-                'Exception: ',
-                '',
-              );
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+              return _buildErrorView(snapshot.error.toString());
+            }
+
+            final allTasks = snapshot.data ?? [];
+            final activeTasks = allTasks
+                .where((t) => t.status != 'delivered')
+                .toList();
+            final completedTasks = allTasks
+                .where((t) => t.status == 'delivered')
+                .toList();
+
+            return Column(
+              children: [
+                _buildHeaderStats(activeTasks.length, completedTasks.length),
+                Expanded(
+                  child: TabBarView(
                     children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        errorMsg,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.red.shade700,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _refreshTasks,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Coba Lagi'),
+                      _buildTaskListView(activeTasks, 'Belum ada tugas aktif.'),
+                      _buildTaskListView(
+                        completedTasks,
+                        'Belum ada tugas yang selesai.',
                       ),
                     ],
                   ),
                 ),
-              );
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.inbox_outlined,
-                      size: 64,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Belum ada tugas pengiriman.',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            final tasks = snapshot.data!;
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: tasks.length,
-              itemBuilder: (context, index) {
-                final task = tasks[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    vertical: 6,
-                    horizontal: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 16,
-                    ),
-                    leading: Icon(
-                      _statusIcon(task.status),
-                      color: _statusColor(task.status),
-                      size: 32,
-                    ),
-                    title: Text(
-                      task.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text('ID: ${task.taskId}'),
-                        if (task.destination?.address != null)
-                          Text(
-                            task.destination!.address!,
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _statusColor(task.status).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        task.statusLabel,
-                        style: TextStyle(
-                          color: _statusColor(task.status),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DeliveryDetailPage(task: task),
-                        ),
-                      );
-                      // Refresh setelah kembali dari detail
-                      _refreshTasks();
-                    },
-                  ),
-                );
-              },
+              ],
             );
           },
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _refreshTasks,
+          backgroundColor: Colors.blueAccent,
+          child: const Icon(Icons.refresh, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderStats(int active, int done) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.blueAccent,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+      ),
+      child: Row(
+        children: [
+          _statCard(
+            'Tugas Aktif',
+            active.toString(),
+            Colors.white.withOpacity(0.2),
+          ),
+          const SizedBox(width: 12),
+          _statCard(
+            'Total Selesai',
+            done.toString(),
+            Colors.white.withOpacity(0.2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statCard(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTaskListView(List<DeliveryTask> tasks, String emptyMsg) {
+    if (tasks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              emptyMsg,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => _refreshTasks(),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        itemCount: tasks.length,
+        itemBuilder: (context, index) {
+          final task = tasks[index];
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _statusColor(task.status).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _statusIcon(task.status),
+                  color: _statusColor(task.status),
+                  size: 24,
+                ),
+              ),
+              title: Text(
+                task.title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.tag, size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(
+                        task.taskId,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.blueGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (task.destination?.address != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            task.destination!.address!,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeliveryDetailPage(task: task),
+                  ),
+                );
+                _refreshTasks();
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildErrorView(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, size: 64, color: Colors.redAccent),
+            const SizedBox(height: 16),
+            Text(
+              error.replaceAll('Exception: ', ''),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _refreshTasks,
+              child: const Text('Coba Lagi'),
+            ),
+          ],
         ),
       ),
     );

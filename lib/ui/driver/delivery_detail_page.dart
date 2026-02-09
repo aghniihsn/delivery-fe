@@ -25,8 +25,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     _task = widget.task;
   }
 
-  // ======================== STATUS HELPERS ========================
-
   Color _statusColor(String status) {
     switch (status) {
       case 'delivered':
@@ -81,14 +79,12 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     }
   }
 
-  // ======================== IMAGE PICK ========================
-
   Future<void> _pickImage(ImageSource source) async {
     final ImagePicker picker = ImagePicker();
     try {
       final XFile? pickedFile = await picker.pickImage(
         source: source,
-        imageQuality: 80,
+        imageQuality: 50,
       );
       if (pickedFile != null) {
         setState(() => _imageFile = pickedFile);
@@ -103,7 +99,44 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     }
   }
 
-  // ======================== STATUS UPDATE ACTIONS ========================
+  Future<void> _handleCompleteDelivery(String notes) async {
+    if (_imageFile == null) {
+      _showMsg(
+        'Wajib mengambil foto bukti sebelum menyelesaikan pengiriman!',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final uploadResult = await _apiService.uploadDeliveryProof(
+        _task.id,
+        imageFile: File(_imageFile!.path),
+      );
+
+      final updateResult = await _apiService.updateTaskStatus(
+        taskId: _task.id,
+        status: 'delivered',
+        notes: notes,
+      );
+
+      if (!mounted) return;
+
+      _showMsg(updateResult['message'] ?? 'Pengiriman berhasil diselesaikan!');
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      _showMsg(
+        'Gagal menyelesaikan pengiriman: ${e.toString().replaceAll('Exception: ', '')}',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
   Future<void> _updateStatus(
     String newStatus, {
@@ -141,37 +174,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     }
   }
 
-  Future<void> _uploadProof() async {
-    if (_imageFile == null) {
-      _showMsg('Pilih foto bukti pengiriman terlebih dahulu', isError: true);
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-
-    try {
-      final result = await _apiService.uploadDeliveryProof(
-        _task.id,
-        imageFile: File(_imageFile!.path),
-      );
-
-      if (!mounted) return;
-      _showMsg(result['message'] ?? 'Bukti berhasil diupload');
-
-      if (result['task'] != null) {
-        setState(() {
-          _task = DeliveryTask.fromJson(result['task'] as Map<String, dynamic>);
-          _imageFile = null;
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      _showMsg(e.toString().replaceAll('Exception: ', ''), isError: true);
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
   void _showMsg(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context)
       ..removeCurrentSnackBar()
@@ -187,8 +189,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         ),
       );
   }
-
-  // ======================== DIALOGS ========================
 
   void _showPickupConfirmation() {
     showDialog(
@@ -222,17 +222,24 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   }
 
   void _showDeliveredConfirmation() {
+    if (_imageFile == null) {
+      _showMsg('Wajib mengambil foto bukti terlebih dahulu!', isError: true);
+      return;
+    }
+
     final notesController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-        title: const Text('Paket Terkirim'),
+        title: const Text('Konfirmasi Terkirim'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Konfirmasi bahwa paket telah diterima oleh penerima.'),
+            const Text(
+              'Foto bukti sudah terlampir. Berikan catatan tambahan jika perlu.',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: notesController,
@@ -256,10 +263,10 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              _updateStatus('delivered', notes: notesController.text);
+              _handleCompleteDelivery(notesController.text);
             },
             icon: const Icon(Icons.check_circle),
-            label: const Text('Konfirmasi Terkirim'),
+            label: const Text('Selesaikan Tugas'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
@@ -476,8 +483,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
-  // ======================== BUILD ========================
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -499,6 +504,12 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             if (_task.recipientName.isNotEmpty ||
                 _task.recipientPhone.isNotEmpty)
               _buildRecipientCard(),
+
+            if (_task.isOnDelivery || _task.isRescheduled) ...[
+              const SizedBox(height: 16),
+              _buildPhotoInputSection(),
+            ],
+
             if (_task.isRescheduled) ...[
               const SizedBox(height: 16),
               _buildRescheduleInfoCard(),
@@ -515,7 +526,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               const SizedBox(height: 20),
               _buildProofSection(),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             if (_task.canUpdateStatus && !_isSubmitting) _buildActionButtons(),
             if (_isSubmitting)
               const Center(
@@ -526,13 +537,113 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               ),
             if (_task.isCompleted && !_isSubmitting) _buildCompletedBanner(),
             if (_task.isFailed && !_isSubmitting) _buildFailedBanner(),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  // ======================== STATUS PROGRESS ========================
+  Widget _buildPhotoInputSection() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.camera_alt, color: Colors.blueAccent),
+                SizedBox(width: 8),
+                Text(
+                  'Ambil Bukti Foto *',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Wajib dilampirkan sebelum menandai paket terkirim.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: _imageFile == null
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.add_a_photo,
+                            size: 40,
+                            color: Colors.blueAccent,
+                          ),
+                          onPressed: () => _pickImage(ImageSource.camera),
+                        ),
+                        const Text(
+                          'Gunakan Kamera',
+                          style: TextStyle(color: Colors.blueAccent),
+                        ),
+                      ],
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(File(_imageFile!.path), fit: BoxFit.cover),
+                          PositionError(
+                            top: 8,
+                            right: 8,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.red,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _imageFile = null),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+            if (_imageFile == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: TextButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library, size: 18),
+                    label: const Text('Pilih dari Galeri'),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget PositionError({
+    required double top,
+    required double right,
+    required Widget child,
+  }) {
+    return Positioned(top: top, right: right, child: child);
+  }
 
   Widget _buildStatusProgress() {
     final stages = ['assigned', 'on_delivery', 'delivered'];
@@ -663,8 +774,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
-  // ======================== INFO CARD ========================
-
   Widget _buildInfoCard() {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -704,29 +813,11 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                 _formatDate(_task.createdAt!),
               ),
             ],
-            if (_task.pickedUpAt != null) ...[
-              const SizedBox(height: 8),
-              _infoRow(
-                Icons.inventory,
-                'Diambil',
-                _formatDate(_task.pickedUpAt!),
-              ),
-            ],
-            if (_task.deliveredAt != null) ...[
-              const SizedBox(height: 8),
-              _infoRow(
-                Icons.done_all,
-                'Dikirim',
-                _formatDate(_task.deliveredAt!),
-              ),
-            ],
           ],
         ),
       ),
     );
   }
-
-  // ======================== RECIPIENT CARD ========================
 
   Widget _buildRecipientCard() {
     return Card(
@@ -759,8 +850,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
       ),
     );
   }
-
-  // ======================== RESCHEDULE INFO ========================
 
   Widget _buildRescheduleInfoCard() {
     return Card(
@@ -805,8 +894,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
-  // ======================== FAILED INFO ========================
-
   Widget _buildFailedInfoCard() {
     return Card(
       color: Colors.red.shade50,
@@ -843,8 +930,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
       ),
     );
   }
-
-  // ======================== STATUS HISTORY ========================
 
   Widget _buildStatusHistoryCard() {
     return Card(
@@ -933,8 +1018,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
-  // ======================== PROOF SECTION ========================
-
   Widget _buildProofSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -954,119 +1037,19 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               child: Image.network(
                 _task.imageUrl!,
                 fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator());
+                },
                 errorBuilder: (_, __, ___) => const Center(
                   child: Icon(Icons.broken_image, size: 64, color: Colors.grey),
                 ),
               ),
             ),
-          )
-        else ...[
-          Container(
-            height: 220,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: _imageFile == null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: 48,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Belum ada bukti foto',
-                          style: TextStyle(color: Colors.grey.shade500),
-                        ),
-                      ],
-                    ),
-                  )
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(11),
-                    child: Image.file(
-                      File(_imageFile!.path),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Kamera'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _isSubmitting
-                      ? null
-                      : () => _pickImage(ImageSource.camera),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Galeri'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _isSubmitting
-                      ? null
-                      : () => _pickImage(ImageSource.gallery),
-                ),
-              ),
-            ],
-          ),
-          if (_imageFile != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: _isSubmitting ? null : _uploadProof,
-                icon: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(Icons.cloud_upload),
-                label: Text(
-                  _isSubmitting ? 'Mengupload...' : 'Upload Bukti Foto',
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
       ],
     );
   }
-
-  // ======================== ACTION BUTTONS ========================
 
   Widget _buildActionButtons() {
     if (_task.isAssigned) {
@@ -1185,8 +1168,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     return const SizedBox.shrink();
   }
 
-  // ======================== STATUS BANNERS ========================
-
   Widget _buildCompletedBanner() {
     return Container(
       width: double.infinity,
@@ -1240,8 +1221,6 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
       ),
     );
   }
-
-  // ======================== HELPERS ========================
 
   Widget _infoRow(IconData icon, String label, String value) {
     return Row(
