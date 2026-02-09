@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:praktikum_1/admin_dashboard_page.dart';
-import 'package:praktikum_1/dashboard_page.dart';
-import 'package:praktikum_1/edit_profile_page.dart';
-import 'auth_service.dart';
+import 'package:praktikum_1/ui/admin/admin_dashboard_page.dart';
+import 'package:praktikum_1/ui/driver/dashboard_page.dart';
+import 'package:praktikum_1/ui/driver/edit_profile_page.dart';
+import 'package:praktikum_1/core/services/auth_services.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -32,8 +32,6 @@ class _LoginPageState extends State<LoginPage> {
               ? Colors.red.shade700
               : Colors.green.shade700,
           behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
   }
@@ -58,7 +56,6 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo & Branding
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -88,90 +85,38 @@ class _LoginPageState extends State<LoginPage> {
                       letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Sistem Manajemen Pengiriman',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
                   const SizedBox(height: 40),
-
-                  // Email Field
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Email',
-                      hintText: 'Masukkan email anda',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Colors.blueAccent,
-                          width: 2,
-                        ),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red),
                       ),
                       prefixIcon: const Icon(
                         Icons.email_outlined,
                         color: Colors.blueAccent,
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Email tidak boleh kosong';
-                      }
-                      if (!RegExp(
-                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                      ).hasMatch(value.trim())) {
-                        return 'Masukkan format email yang valid';
-                      }
-                      return null;
-                    },
+                    validator: (v) => v == null || !v.contains('@')
+                        ? 'Email tidak valid'
+                        : null,
                   ),
                   const SizedBox(height: 16),
-
-                  // Password Field
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _isLoading ? null : _handleLogin(),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      hintText: 'Masukkan password anda',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Colors.blueAccent,
-                          width: 2,
-                        ),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red),
                       ),
                       prefixIcon: const Icon(
                         Icons.lock_outline,
@@ -182,25 +127,16 @@ class _LoginPageState extends State<LoginPage> {
                           _isPasswordVisible
                               ? Icons.visibility
                               : Icons.visibility_off,
-                          color: Colors.grey,
                         ),
                         onPressed: () => setState(
                           () => _isPasswordVisible = !_isPasswordVisible,
                         ),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password tidak boleh kosong';
-                      }
-                      if (value.length < 6)
-                        return 'Password minimal 6 karakter';
-                      return null;
-                    },
+                    validator: (v) =>
+                        v == null || v.length < 6 ? 'Minimal 6 karakter' : null,
                   ),
                   const SizedBox(height: 28),
-
-                  // Tombol Login
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -211,29 +147,16 @@ class _LoginPageState extends State<LoginPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        elevation: 2,
                       ),
                       onPressed: _isLoading ? null : _handleLogin,
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
-                            )
+                          ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
                               'MASUK',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),
-                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -245,7 +168,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     final result = await _authService.login(
@@ -256,37 +178,23 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (result == null) {
-      _showMsg(
-        'Gagal terhubung ke server. Periksa koneksi Anda.',
-        isError: true,
-      );
+    if (result == null || result.containsKey('error')) {
+      _showMsg(result?['error'] ?? 'Gagal login', isError: true);
       return;
     }
 
-    if (result.containsKey('error')) {
-      _showMsg(result['error'], isError: true);
-      return;
-    }
-
-    final String name = result['name'] ?? 'User';
     final String role = result['role'] ?? 'driver';
     final bool profileCompleted = result['profileCompleted'] ?? false;
-    _showMsg('Selamat datang, $name!');
 
-    Widget destination;
-    if (role == 'admin') {
-      destination = const AdminDashboardPage();
-    } else if (!profileCompleted) {
-      // Driver belum lengkapi profil → wajib edit profil dulu
-      destination = const EditProfilePage(isFirstTime: true);
-    } else {
-      destination = const DashboardPage();
-    }
+    Widget dest = (role == 'admin')
+        ? const AdminDashboardPage()
+        : (!profileCompleted
+              ? const EditProfilePage(isFirstTime: true)
+              : const DashboardPage());
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => destination),
+      MaterialPageRoute(builder: (context) => dest),
     );
   }
 }

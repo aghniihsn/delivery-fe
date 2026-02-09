@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:praktikum_1/api_services.dart';
 import 'package:praktikum_1/delivery_task_model.dart';
 import 'package:praktikum_1/auth_service.dart';
-import 'package:praktikum_1/delivery_detail_page.dart';
-import 'package:praktikum_1/edit_profile_page.dart';
-import 'package:praktikum_1/qr_scanner_page.dart';
+import 'package:praktikum_1/ui/driver/delivery_detail_page.dart';
+import 'package:praktikum_1/ui/driver/edit_profile_page.dart';
+import 'package:praktikum_1/ui/driver/qr_scanner_page.dart';
 import 'package:praktikum_1/login_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -87,8 +87,14 @@ class _DashboardPageState extends State<DashboardPage> {
     switch (status) {
       case 'delivered':
         return Colors.green;
-      case 'processing':
+      case 'on_delivery':
         return Colors.orange;
+      case 'assigned':
+        return Colors.blue;
+      case 'rescheduled':
+        return Colors.amber.shade700;
+      case 'failed':
+        return Colors.red;
       case 'pending':
       default:
         return Colors.grey;
@@ -99,8 +105,14 @@ class _DashboardPageState extends State<DashboardPage> {
     switch (status) {
       case 'delivered':
         return Icons.check_circle;
-      case 'processing':
-        return Icons.sync;
+      case 'on_delivery':
+        return Icons.local_shipping;
+      case 'assigned':
+        return Icons.assignment_ind;
+      case 'rescheduled':
+        return Icons.schedule;
+      case 'failed':
+        return Icons.cancel;
       case 'pending':
       default:
         return Icons.radio_button_unchecked;

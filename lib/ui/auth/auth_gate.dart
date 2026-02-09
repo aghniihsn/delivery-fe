@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:praktikum_1/auth_service.dart';
-import 'package:praktikum_1/admin_dashboard_page.dart';
-import 'package:praktikum_1/dashboard_page.dart';
-import 'package:praktikum_1/edit_profile_page.dart';
-import 'package:praktikum_1/login_page.dart';
+import 'package:praktikum_1/core/services/auth_services.dart';
+import 'package:praktikum_1/ui/admin/admin_dashboard_page.dart';
+import 'package:praktikum_1/ui/driver/dashboard_page.dart';
+import 'package:praktikum_1/ui/driver/edit_profile_page.dart';
+import 'package:praktikum_1/ui/auth/login_page.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -22,7 +22,6 @@ class AuthGate extends StatelessWidget {
         }
 
         if (snapshot.hasData && snapshot.data == true) {
-          // User sudah login, cek role untuk navigasi
           return FutureBuilder<String?>(
             future: authService.getRole(),
             builder: (context, roleSnapshot) {
@@ -36,7 +35,7 @@ class AuthGate extends StatelessWidget {
               if (role == 'admin') {
                 return const AdminDashboardPage();
               }
-              // Cek apakah driver sudah lengkapi profil
+
               return FutureBuilder<bool>(
                 future: authService.isProfileCompleted(),
                 builder: (context, profileSnapshot) {

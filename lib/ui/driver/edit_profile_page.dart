@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:praktikum_1/api_services.dart';
 import 'package:praktikum_1/auth_service.dart';
-import 'package:praktikum_1/dashboard_page.dart';
+import 'package:praktikum_1/ui/driver/dashboard_page.dart';
 
 class EditProfilePage extends StatefulWidget {
-  /// Jika true, halaman ini ditampilkan sebagai wajib (pertama kali login)
-  /// dan tidak bisa di-back. Jika false, bisa kembali ke halaman sebelumnya.
   final bool isFirstTime;
 
   const EditProfilePage({super.key, this.isFirstTime = false});
