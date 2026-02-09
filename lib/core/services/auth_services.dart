@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:praktikum_1/core/constants/api_constants.dart';
@@ -31,7 +32,8 @@ class AuthService {
         return {'error': errorData['message'] ?? 'Login gagal'};
       }
     } catch (e) {
-      return null;
+      debugPrint('Login error: $e');
+      return {'error': 'Tidak bisa terhubung ke server: $e'};
     }
   }
 

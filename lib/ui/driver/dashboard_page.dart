@@ -40,15 +40,44 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  void _showMsg(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   void _navigateToQRScanner() async {
-    final result = await Navigator.push<String>(
+    final scannedCode = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (context) => const QRScannerPage()),
     );
-    if (result != null && mounted) {
-      ScaffoldMessenger.of(context)
-        ..removeCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Kode Terdeteksi: $result')));
+
+    if (scannedCode != null && mounted) {
+      try {
+        // Ambil list tugas terbaru dari server/state
+        final List<DeliveryTask> tasks = await _apiService.fetchDeliveryTasks();
+        
+        // Cari tugas yang cocok dengan ID hasil scan
+        final matchedTask = tasks.firstWhere(
+          (t) => t.taskId == scannedCode,
+          orElse: () => throw Exception('Paket tidak ditemukan'),
+        );
+
+        if (!mounted) return;
+
+        // Jika ditemukan, langsung buka halaman detail untuk aksi selanjutnya (Update Status/POD)
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DeliveryDetailPage(task: matchedTask)),
+        ).then((_) => _refreshTasks());
+
+      } catch (e) {
+        _showMsg('Gagal: ID "$scannedCode" tidak ditemukan di daftar tugas Anda.', isError: true);
+      }
     }
   }
 
