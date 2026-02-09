@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:praktikum_1/delivery_task_model.dart';
-import 'package:praktikum_1/api_services.dart';
+import 'package:praktikum_1/core/models/delivery_task_model.dart';
+import 'package:praktikum_1/core/services/api_services.dart';
 
 class DeliveryDetailPage extends StatefulWidget {
   final DeliveryTask task;

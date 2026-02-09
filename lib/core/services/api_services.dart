@@ -86,14 +86,14 @@ class ApiService {
     throw Exception('Gagal upload bukti');
   }
 
-  // --- ADMIN API ---
   Future<List<Map<String, dynamic>>> fetchAllUsers() async {
     final response = await http.get(
       Uri.parse(ApiConstants.usersUrl),
       headers: await _authHeaders(),
     );
-    if (response.statusCode == 200)
+    if (response.statusCode == 200) {
       return (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
+    }
     throw Exception('Gagal memuat data pengguna');
   }
 
@@ -149,6 +149,28 @@ class ApiService {
     throw Exception('Gagal membuat tugas');
   }
 
+  Future<Map<String, dynamic>> createBulkTasks(
+    List<Map<String, dynamic>> tasks,
+  ) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.post(
+        Uri.parse('${ApiConstants.tasksUrl}/bulk'),
+        headers: headers,
+        body: jsonEncode({'tasks': tasks}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) {
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Gagal membuat tugas bulk');
+      }
+    } catch (e) {
+      throw Exception('$e');
+    }
+  }
+
   Future<Map<String, dynamic>> assignTask({
     required String taskId,
     required String driverId,
@@ -160,6 +182,29 @@ class ApiService {
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Gagal assign tugas');
+  }
+
+  Future<Map<String, dynamic>> assignBatchTasks({
+    required List<String> taskIds,
+    required String driverId,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.patch(
+        Uri.parse('${ApiConstants.tasksUrl}/assign-batch'),
+        headers: headers,
+        body: jsonEncode({'taskIds': taskIds, 'assignedTo': driverId}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Gagal assign batch task');
+      }
+    } catch (e) {
+      throw Exception('$e');
+    }
   }
 
   Future<Map<String, dynamic>> getMyProfile() async {
@@ -182,5 +227,21 @@ class ApiService {
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Gagal update profil');
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final response = await http.put(
+      Uri.parse('${ApiConstants.usersUrl}/change-password'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'oldPassword': oldPassword,
+        'newPassword': newPassword,
+      }),
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Gagal mengubah password');
   }
 }

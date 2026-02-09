@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:praktikum_1/api_services.dart';
-import 'package:praktikum_1/delivery_task_model.dart';
-import 'package:praktikum_1/auth_service.dart';
+import 'package:praktikum_1/core/services/api_services.dart';
+import 'package:praktikum_1/core/models/delivery_task_model.dart';
+import 'package:praktikum_1/core/services/auth_services.dart';
 import 'package:praktikum_1/ui/driver/delivery_detail_page.dart';
 import 'package:praktikum_1/ui/driver/edit_profile_page.dart';
 import 'package:praktikum_1/ui/driver/qr_scanner_page.dart';
-import 'package:praktikum_1/login_page.dart';
+import 'package:praktikum_1/ui/auth/login_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:praktikum_1/auth_gate.dart';
+import 'package:praktikum_1/ui/auth/auth_gate.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

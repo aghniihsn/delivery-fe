@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:praktikum_1/api_services.dart';
-import 'package:praktikum_1/auth_service.dart';
+import 'package:praktikum_1/core/services/api_services.dart';
+import 'package:praktikum_1/core/services/auth_services.dart';
 import 'package:praktikum_1/ui/driver/dashboard_page.dart';
 
 class EditProfilePage extends StatefulWidget {
