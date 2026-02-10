@@ -77,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    'LogiTrack',
+                    'DeliverWell',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
