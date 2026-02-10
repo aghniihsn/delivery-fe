@@ -96,16 +96,86 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
             _showMsg(e.toString(), isError: true);
           }
         },
-        onCreateBulk: (tasks) async {
-          try {
-            await _apiService.createBulkTasks(tasks);
-            _showMsg('${tasks.length} task berhasil dibuat');
-            _loadData();
-          } catch (e) {
-            _showMsg(e.toString(), isError: true);
-          }
-        },
       ),
+    );
+  }
+
+  void _showAssignDialog(DeliveryTask task) {
+    String? selectedDriverId;
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Text('Assign Kurir'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'ID: ${task.taskId}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedDriverId,
+                    decoration: InputDecoration(
+                      labelText: 'Pilih Kurir',
+                      prefixIcon: const Icon(Icons.delivery_dining),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    items: _cachedDrivers
+                        .map(
+                          (d) => DropdownMenuItem<String>(
+                            value: d['_id'],
+                            child: Text(d['name'] ?? 'No Name'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) =>
+                        setDialogState(() => selectedDriverId = val),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: selectedDriverId == null
+                      ? null
+                      : () async {
+                          Navigator.pop(ctx);
+                          try {
+                            await _apiService.assignTask(
+                              taskId: task.id,
+                              driverId: selectedDriverId!,
+                            );
+                            _showMsg('Kurir berhasil di-assign');
+                            _loadData();
+                          } catch (e) {
+                            _showMsg(e.toString(), isError: true);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Assign'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -297,9 +367,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                     onTap: () {
                       /* Buka detail */
                     },
-                    onAssign: () {
-                      /* Buka dialog assign */
-                    },
+                    onAssign: () => _showAssignDialog(tasks[index]),
                   ),
                 ),
               ),
