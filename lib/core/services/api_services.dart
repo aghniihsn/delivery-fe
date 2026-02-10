@@ -128,6 +128,17 @@ class ApiService {
     throw Exception('Gagal memuat semua tugas');
   }
 
+  Future<DeliveryTask> fetchTaskById(String taskId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConstants.tasksUrl}/$taskId'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return DeliveryTask.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Gagal memuat detail tugas');
+  }
+
   Future<Map<String, dynamic>> createTask({
     required String title,
     required String taskId,
@@ -243,5 +254,32 @@ class ApiService {
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Gagal mengubah password');
+  }
+
+  // ============ LOCATION ============
+
+  Future<void> updateMyLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final response = await http.put(
+      Uri.parse('${ApiConstants.usersUrl}/location'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'latitude': latitude, 'longitude': longitude}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Gagal update lokasi');
+    }
+  }
+
+  Future<Map<String, dynamic>?> getDriverLocation(String driverId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConstants.usersUrl}/$driverId/location'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return null;
   }
 }
