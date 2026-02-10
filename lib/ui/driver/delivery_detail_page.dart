@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:praktikum_1/core/models/delivery_task_model.dart';
 import 'package:praktikum_1/core/services/api_services.dart';
+import 'package:praktikum_1/core/services/location_service.dart';
 
 class DeliveryDetailPage extends StatefulWidget {
   final DeliveryTask task;
@@ -15,6 +16,7 @@ class DeliveryDetailPage extends StatefulWidget {
 
 class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   final ApiService _apiService = ApiService();
+  final LocationService _locationService = LocationService();
   late DeliveryTask _task;
   XFile? _imageFile;
   bool _isSubmitting = false;
@@ -23,6 +25,16 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   void initState() {
     super.initState();
     _task = widget.task;
+    // Auto-start tracking if already on_delivery
+    if (_task.isOnDelivery) {
+      _startLocationTracking();
+    }
+  }
+
+  @override
+  void dispose() {
+    // Don't stop tracking on dispose - it continues in background
+    super.dispose();
   }
 
   Color _statusColor(String status) {
@@ -126,6 +138,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
 
       _showMsg(updateResult['message'] ?? 'Pengiriman berhasil diselesaikan!');
 
+      _locationService.stopTracking();
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -136,6 +149,19 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _startLocationTracking() async {
+    final hasPermission = await _locationService.ensurePermission();
+    if (!hasPermission && mounted) {
+      _showMsg(
+        'GPS tidak tersedia. Aktifkan lokasi di pengaturan HP.',
+        isError: true,
+      );
+      return;
+    }
+    _locationService.startTracking();
+    if (mounted) setState(() {});
   }
 
   Future<void> _updateStatus(
@@ -165,6 +191,14 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         setState(() {
           _task = DeliveryTask.fromJson(result['task'] as Map<String, dynamic>);
         });
+        // Start GPS tracking when status becomes on_delivery
+        if (newStatus == 'on_delivery') {
+          _startLocationTracking();
+        }
+        // Stop GPS tracking when delivery ends
+        if (['delivered', 'failed'].contains(newStatus)) {
+          _locationService.stopTracking();
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -205,8 +239,18 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             child: const Text('Batal'),
           ),
           ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
+            onPressed: () async {
+              // Request GPS permission first
+              final hasGps = await _locationService.ensurePermission();
+              if (!hasGps && mounted) {
+                Navigator.pop(ctx);
+                _showMsg(
+                  'Aktifkan GPS/Lokasi di HP untuk melacak pengiriman!',
+                  isError: true,
+                );
+                return;
+              }
+              if (mounted) Navigator.pop(ctx);
               _updateStatus('on_delivery');
             },
             icon: const Icon(Icons.local_shipping),

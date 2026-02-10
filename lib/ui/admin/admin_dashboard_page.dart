@@ -8,6 +8,7 @@ import 'package:praktikum_1/ui/auth/login_page.dart';
 import 'widgets/admin_summary_cards.dart';
 import 'widgets/task_card_item.dart';
 import 'widgets/create_task_sheet.dart';
+import 'widgets/task_tab_view.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -365,7 +366,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                   itemBuilder: (context, index) => TaskCardItem(
                     task: tasks[index],
                     onTap: () {
-                      /* Buka detail */
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              TaskTabView(initialTask: tasks[index]),
+                        ),
+                      ).then((_) => _loadData());
                     },
                     onAssign: () => _showAssignDialog(tasks[index]),
                   ),
